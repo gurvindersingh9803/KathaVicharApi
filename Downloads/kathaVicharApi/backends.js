@@ -200,11 +200,11 @@ app.post('/upload', upload.fields([{ name: 'audio_file', maxCount: 1 }, { name: 
             await minioClient.fPutObject(BUCKET_NAME_IMAGES, imageFileName, imageFile.path);
 
             // Construct the URL for the image
-            imageUrl = `http://${process.env.MINIO_ENDPOINT || '127.0.0.1'}:9000/${BUCKET_NAME_IMAGES}/${imageFileName}`;
+            imageUrl = `http://${process.env.MINIO_ENDPOINT || '134.199.223.51'}:9000/${BUCKET_NAME_IMAGES}/${imageFileName}`;
         }
 
         // Construct the URL for the audio
-        const audioUrl = `http://${process.env.MINIO_ENDPOINT || '127.0.0.1'}:9000/${BUCKET_NAME_AUDIO}/${audioFileName}`;
+        const audioUrl = `http://${process.env.MINIO_ENDPOINT || '134.199.223.51'}:9000/${BUCKET_NAME_AUDIO}/${audioFileName}`;
 
         res.json({
             message: 'Song uploaded successfully to MinIO!',
