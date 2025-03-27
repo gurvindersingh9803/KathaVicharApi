@@ -19,11 +19,11 @@ app.use(bodyParser.json()); // Middleware to parse JSON body
 
 // MinIO Client Configuration
 const minioClient = new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT || '127.0.0.1',
+    endPoint: process.env.MINIO_ENDPOINT || '134.199.223.51',
     port: 9000,
     useSSL: false,
-    accessKey: process.env.MINIO_ACCESS_KEY || 'gurvindersingh9803',
-    secretKey: process.env.MINIO_SECRET_KEY || 'Gurii@9803'
+    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin'
 });
 
 const BUCKET_NAME_AUDIO = 'audios';
