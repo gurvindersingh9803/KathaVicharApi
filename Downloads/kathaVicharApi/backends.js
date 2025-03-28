@@ -192,7 +192,7 @@ app.post('/upload', upload.fields([{ name: 'audio_file', maxCount: 1 }, { name: 
         let imageUrl = null;
 
         // Upload audio file to MinIO
-        await minioClient.fPutObject(BUCKET_NAME_AUDIO, audioFileName, audioFile.path);
+        await minioClient.fPutObject(BUCKET_NAME_AUDIO, audioFileName, audioFile.path, { 'Content-Type': 'audio/mpeg' });
 
         if (imageFile) {
             // If an image file is provided, upload it to MinIO
