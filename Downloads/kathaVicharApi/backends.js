@@ -188,7 +188,7 @@ app.post('/upload', upload.fields([{ name: 'audio_file', maxCount: 1 }, { name: 
             return res.status(400).json({ error: 'Title, artist, and audio file are required!' });
         }
 
-        const audioFileName = `audio/${title}-${Date.now()}-${path.basename(audioFile.originalname)}`;
+        const audioFileName = `audio/${title}-${Date.now()}`;
         let imageUrl = null;
 
         // Upload audio file to MinIO
