@@ -175,6 +175,11 @@ app.post('/add-song', async (req, res) => {
     }
 });
 
+// Utility to remove spaces and special characters
+function sanitizeFileName(fileName) {
+    return fileName.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
+}
+
 // Upload audio file to MinIO
 const upload = multer({ dest: 'uploads/' });
 app.post('/upload', upload.fields([{ name: 'audio_file', maxCount: 1 }, { name: 'image_file', maxCount: 1 }]), async (req, res) => {
@@ -183,40 +188,39 @@ app.post('/upload', upload.fields([{ name: 'audio_file', maxCount: 1 }, { name: 
         const audioFile = req.files['audio_file'] ? req.files['audio_file'][0] : null;
         const imageFile = req.files['image_file'] ? req.files['image_file'][0] : null;
 
-        // Ensure that audio file and title/artist are provided
         if (!title || !artist || !audioFile) {
             return res.status(400).json({ error: 'Title, artist, and audio file are required!' });
         }
 
-        const audioFileName = `audio/${artist}/${title}-${Date.now()}-${path.basename(audioFile.originalname)}`;
+        const sanitizedTitle = sanitizeFileName(title);
+        const sanitizedArtist = sanitizeFileName(artist);
+        const sanitizedAudioName = sanitizeFileName(audioFile.originalname);
+        const audioFileName = `audio/${sanitizedArtist}/${sanitizedTitle}-${Date.now()}-${sanitizedAudioName}`;
+
         let imageUrl = null;
 
         // Upload audio file to MinIO
         await minioClient.fPutObject(BUCKET_NAME_AUDIO, audioFileName, audioFile.path, { 'Content-Type': 'audio/mpeg' });
 
         if (imageFile) {
-            // If an image file is provided, upload it to MinIO
-            const imageFileName = `images/${artist}/${title}-${Date.now()}-${path.basename(imageFile.originalname)}`;
+            const sanitizedImageName = sanitizeFileName(imageFile.originalname);
+            const imageFileName = `images/${sanitizedArtist}/${sanitizedTitle}-${Date.now()}-${sanitizedImageName}`;
             await minioClient.fPutObject(BUCKET_NAME_IMAGES, imageFileName, imageFile.path);
-
-            // Construct the URL for the image
             imageUrl = `http://${process.env.MINIO_ENDPOINT || '134.199.223.51'}:9000/${BUCKET_NAME_IMAGES}/${imageFileName}`;
         }
 
-        // Construct the URL for the audio
         const audioUrl = `http://${process.env.MINIO_ENDPOINT || '134.199.223.51'}:9000/${BUCKET_NAME_AUDIO}/${audioFileName}`;
 
         res.json({
             message: 'Song uploaded successfully to MinIO!',
             audio_url: audioUrl,
-            image_url: imageUrl // If no image, image_url will be null
+            image_url: imageUrl
         });
     } catch (error) {
         console.error('Error uploading files to MinIO:', error);
         res.status(500).json({ error: 'File upload failed on MinIO!' });
     }
 });
-
 
 // Assuming you are using Express.js for your server
 // API Endpoint to Get Artist Image URL
