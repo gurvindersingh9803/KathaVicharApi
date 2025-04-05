@@ -251,6 +251,37 @@ app.get('/artist-image/:artistName', async (req, res) => {
     }
 });
 
+
+// API Endpoint to get version and force update info
+app.get('/app-version', async (req, res) => {
+    try {
+        // Fetch the latest settings from Supabase
+        const { data, error } = await supabase
+            .from('settings') // Assuming your table is named 'settings'
+            .select('version, force_upgrade')
+            .single(); // Fetch a single record
+
+        if (error) {
+            return res.status(500).json({ error: 'Error fetching version information from Supabase' });
+        }
+
+        if (!data) {
+            return res.status(404).json({ error: 'Version info not found' });
+        }
+
+        const { version, force_upgrade } = data;
+
+        // Send version and force upgrade information
+        res.status(200).json({
+            version: version, // Current version from Supabase
+            force_upgrade: force_upgrade // Boolean indicating if a force upgrade is needed
+        });
+    } catch (error) {
+        console.error('Error fetching version and force upgrade info:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
