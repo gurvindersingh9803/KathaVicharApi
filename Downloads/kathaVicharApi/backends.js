@@ -19,7 +19,7 @@ app.use(bodyParser.json()); // Middleware to parse JSON body
 
 // MinIO Client Configuration
 const minioClient = new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT || 'https://kathhaveechar.store',
+    endPoint: process.env.MINIO_ENDPOINT || '134.199.223.51',
     port: 9000,
     useSSL: false,
     accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
