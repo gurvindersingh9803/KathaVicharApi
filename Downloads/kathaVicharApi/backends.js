@@ -6,6 +6,9 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
 
+const AWS = require('aws-sdk');
+const fs = require('fs');
+
 const app = express();
 const port = 3000;
 const corsOptions = {
@@ -26,19 +29,49 @@ const minioClient = new Minio.Client({
     secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin'
 });
 
+// Configure DigitalOcean Spaces client
+const spacesEndpoint = new AWS.Endpoint('https://kathavichar.sfo3.digitaloceanspaces.com'); // Change region if needed
+const s3 = new AWS.S3({
+    endpoint: spacesEndpoint,
+    accessKeyId: process.env.SPACES_KEY || 'DO00L4Y7KEUJUHXQH6JD',
+    secretAccessKey: process.env.SPACES_SECRET || 'your-secret-key'
+});
+
 const BUCKET_NAME_AUDIO = 'audios';
 const BUCKET_NAME_IMAGES= 'images';
 
 // Ensure the bucket exists
+//async function ensureBucketsExist() {
+    //try {
+       // const buckets = [BUCKET_NAME_AUDIO, BUCKET_NAME_IMAGES];
+
+      //  for (const bucket of buckets) {
+      //      const exists = await minioClient.bucketExists(bucket);
+      //      if (!exists) {
+       //         await minioClient.makeBucket(bucket);
+       //         console.log(`Bucket '${bucket}' created.`);
+       //     }
+      //  }
+  //  } catch (error) {
+   //     console.error('Error checking/creating buckets:', error);
+   // }
+//}
+
+
+// Ensure buckets exist (optional — Spaces creates them in the dashboard)
 async function ensureBucketsExist() {
     try {
         const buckets = [BUCKET_NAME_AUDIO, BUCKET_NAME_IMAGES];
-
         for (const bucket of buckets) {
-            const exists = await minioClient.bucketExists(bucket);
-            if (!exists) {
-                await minioClient.makeBucket(bucket);
-                console.log(`Bucket '${bucket}' created.`);
+            try {
+                await s3.headBucket({ Bucket: bucket }).promise();
+            } catch (err) {
+                if (err.statusCode === 404) {
+                    await s3.createBucket({ Bucket: bucket }).promise();
+                    console.log(`Bucket '${bucket}' created.`);
+                } else {
+                    throw err;
+                }
             }
         }
     } catch (error) {
@@ -47,6 +80,7 @@ async function ensureBucketsExist() {
 }
 
 ensureBucketsExist();
+
 
 // Initialize the Supabase client
 const supabaseUrl = 'https://jjejmgefvqeyhyhxgvas.supabase.co'; // Replace with your Supabase URL
