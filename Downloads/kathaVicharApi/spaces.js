@@ -4,14 +4,14 @@ const multer = require('multer');
 const path = require('path');
 
 const app = express();
-const port = 3001;
+const port = 3000;
 
 // Configure Digital Ocean Spaces
-const spacesEndpoint = new AWS.Endpoint('sfo3.cdn.digitaloceanspaces.com');
+const spacesEndpoint = new AWS.Endpoint('sfo3.digitaloceanspaces.com');
 const s3 = new AWS.S3({
     endpoint: spacesEndpoint,
-    accessKeyId: 'DO00WWF46UPWBTUPC8RW',
-    secretAccessKey: 'hYOXDZ4e4T4iqpHb3DuSFHj5w+Df6KbyfLJ85Aemr/c'
+    accessKeyId: 'DO00Y8NLU79DTLQFU2Q9',
+    secretAccessKey: 'SizZ+1toETvqvIcXZUS3OLzlFq1kAga7qfpGDfyK1hY'
 });
 
 // Function to sanitize strings (remove spaces and special characters)
@@ -35,7 +35,7 @@ const sanitizeString = (filename) => {
 
 // Function to ensure buckets exist
 async function ensureBucketsExist() {
-    const bucketPrefix = 'gurvinder-'; // Change to your unique prefix
+    const bucketPrefix = 'katha-'; // Change to your unique prefix
     const buckets = [`${bucketPrefix}audios`, `${bucketPrefix}images`];
 
     for (const bucketName of buckets) {
@@ -44,7 +44,7 @@ async function ensureBucketsExist() {
             await s3.headBucket({ Bucket: bucketName }).promise();
             console.log(`Bucket "${bucketName}" already exists`);
         } catch (error) {
-            if (error.statusCode === 404) {
+            if (error.statusCode === 404 || error.statusCode === 403) {
                 try {
                     console.log(`Creating bucket "${bucketName}"...`);
                     await s3.createBucket({ Bucket: bucketName }).promise();
@@ -145,7 +145,7 @@ app.post('/upload', (req, res) => {
                     ContentType: audioFile.mimetype
                 };
                 const audioData = await s3.upload(audioParams).promise();
-                response.audioUrl = audioData.Location;
+                response.audioUrl = getCDNUrl(audioBucket, audioKey);
             }
 
             // Upload image if present and no image exists yet
@@ -163,7 +163,7 @@ app.post('/upload', (req, res) => {
                         ContentType: imageFile.mimetype
                     };
                     const imageData = await s3.upload(imageParams).promise();
-                    response.imageUrl = imageData.Location;
+                    response.imageUrl = getCDNUrl(imageBucket, imageKey);
                 }
             }
 
@@ -173,7 +173,7 @@ app.post('/upload', (req, res) => {
             });
         } catch (error) {
             console.error('Upload error:', error);
-            res.status(500).json({ error: 'Error uploading files' });
+            res.status(500).json({ error: error });
         }
     });
 });
@@ -197,6 +197,10 @@ async function startServer() {
         console.error('Failed to start server due to bucket setup error:', error);
         process.exit(1);
     }
+}
+
+function getCDNUrl(bucket, key) {
+    return `https://${bucket}.sfo3.cdn.digitaloceanspaces.com/${key}`;
 }
 
 startServer();
