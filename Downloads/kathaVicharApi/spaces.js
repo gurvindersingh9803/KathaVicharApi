@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // Configure Digital Ocean Spaces
 const spacesEndpoint = new AWS.Endpoint('sfo3.digitaloceanspaces.com');
