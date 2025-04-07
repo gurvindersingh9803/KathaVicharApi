@@ -34,7 +34,7 @@ const spacesEndpoint = new AWS.Endpoint('sfo3.digitaloceanspaces.com'); // Use t
 const s3 = new AWS.S3({
     endpoint: spacesEndpoint,
     accessKeyId: process.env.SPACES_KEY || 'DO00L4Y7KEUJUHXQH6JD',
-    secretAccessKey: process.env.SPACES_SECRET || 'your-secret-key',
+    secretAccessKey: process.env.SPACES_SECRET || 'ZSaOKzElZ5y7tEtaW64/U+jE3AaWAts2ZTy4n/w8faw',
     s3ForcePathStyle: true // Force path-style URLs
 });
 const BUCKET_NAME_AUDIO = 'audios';
