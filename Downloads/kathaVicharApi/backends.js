@@ -20,68 +20,212 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(bodyParser.json()); // Middleware to parse JSON body
 
-// MinIO Client Configuration
-const minioClient = new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT || '134.199.223.51',
-    port: 9000,
-    useSSL: false,
-    accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin'
-});
-
-// Configure DigitalOcean Spaces client
-const spacesEndpoint = new AWS.Endpoint('sfo3.digitaloceanspaces.com'); // Use the base endpoint
+// Configure Digital Ocean Spaces
+const spacesEndpoint = new AWS.Endpoint('sfo3.digitaloceanspaces.com');
 const s3 = new AWS.S3({
     endpoint: spacesEndpoint,
-    accessKeyId: process.env.SPACES_KEY || 'DO00L4Y7KEUJUHXQH6JD',
-    secretAccessKey: process.env.SPACES_SECRET || 'ZSaOKzElZ5y7tEtaW64/U+jE3AaWAts2ZTy4n/w8faw',
-    s3ForcePathStyle: true, // Force path-style URLs
-    region: 'sfo3', // Explicitly set the region
+    accessKeyId: 'DO00Y8NLU79DTLQFU2Q9',
+    secretAccessKey: 'SizZ+1toETvqvIcXZUS3OLzlFq1kAga7qfpGDfyK1hY'
 });
-const BUCKET_NAME_AUDIO = 'audios';
-const BUCKET_NAME_IMAGES= 'images';
 
-// Ensure the bucket exists
-//async function ensureBucketsExist() {
-    //try {
-       // const buckets = [BUCKET_NAME_AUDIO, BUCKET_NAME_IMAGES];
+// Function to sanitize strings (remove spaces and special characters)
+const sanitizeString = (filename) => {
+    const parts = filename.split('.');
+    
+    if (parts.length < 2) return ''; // Invalid filename (no extension)
 
-      //  for (const bucket of buckets) {
-      //      const exists = await minioClient.bucketExists(bucket);
-      //      if (!exists) {
-       //         await minioClient.makeBucket(bucket);
-       //         console.log(`Bucket '${bucket}' created.`);
-       //     }
-      //  }
-  //  } catch (error) {
-   //     console.error('Error checking/creating buckets:', error);
-   // }
-//}
+    const ext = parts.pop(); // get the extension
+    const name = parts.join('.'); // rejoin name in case of multiple dots in name
+
+    const sanitized = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')  // replace non-alphanumeric with hyphen
+        .replace(/-+/g, '-')         // collapse multiple hyphens
+        .replace(/^-|-$/g, '');      // trim leading/trailing hyphens
+
+    return `${sanitized}.${ext.toLowerCase()}`;
+};
 
 
-// Ensure buckets exist (optional — Spaces creates them in the dashboard)
+// Function to ensure buckets exist
 async function ensureBucketsExist() {
-    try {
-        const buckets = [BUCKET_NAME_AUDIO, BUCKET_NAME_IMAGES];
-        for (const bucket of buckets) {
-            try {
-                await s3.headBucket({ Bucket: bucket }).promise();
-            } catch (err) {
-                if (err.statusCode === 404) {
-                    await s3.createBucket({ Bucket: bucket }).promise();
-                    console.log(`Bucket '${bucket}' created.`);
-                } else {
-                    throw err;
+    const bucketPrefix = 'katha-'; // Change to your unique prefix
+    const buckets = [`${bucketPrefix}audios`, `${bucketPrefix}images`];
+
+    for (const bucketName of buckets) {
+        try {
+            console.log(`Checking if bucket "${bucketName}" exists...`);
+            await s3.headBucket({ Bucket: bucketName }).promise();
+            console.log(`Bucket "${bucketName}" already exists`);
+        } catch (error) {
+            if (error.statusCode === 404 || error.statusCode === 403) {
+                try {
+                    console.log(`Creating bucket "${bucketName}"...`);
+                    await s3.createBucket({ Bucket: bucketName }).promise();
+                    console.log(`Bucket "${bucketName}" created successfully`);
+                    await s3.putBucketAcl({ Bucket: bucketName, ACL: 'public-read' }).promise();
+                    console.log(`Bucket "${bucketName}" set to public-read`);
+                } catch (createError) {
+                    console.error(`Error creating bucket "${bucketName}":`, createError);
+                    throw createError;
                 }
+            } else {
+                console.error(`Unexpected error checking bucket "${bucketName}":`, error);
+                throw error;
             }
         }
+    }
+    return buckets;
+}
+
+function sanitizeArtistName(name) {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')   // replace non-alphanumeric with hyphen
+        .replace(/-+/g, '-')          // collapse multiple hyphens
+        .replace(/^-|-$/g, '');       // trim leading/trailing hyphens
+}
+
+// Configure multer for audio and image uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10000000 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        const audioTypes = /mp3|wav|ogg/;
+        const imageTypes = /jpeg|jpg|png/;
+        const extname = audioTypes.test(path.extname(file.originalname).toLowerCase()) ||
+                       imageTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetypes = [
+            'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg',
+            'image/jpeg', 'image/png'
+        ];
+        const mimetype = mimetypes.includes(file.mimetype);
+
+        if (extname && mimetype) {
+            return cb(null, true);
+        }
+        cb('Error: Only audio (mp3, wav, ogg) or images (jpg, png) allowed!');
+    }
+}).fields([
+    { name: 'audio', maxCount: 1 },
+    { name: 'image', maxCount: 1 }
+]);
+
+// Function to check if an image exists in the artist's folder
+async function checkExistingImage(bucket, artist) {
+    const params = {
+        Bucket: bucket,
+        Prefix: `${artist}/`, // Check the artist's subfolder
+    };
+    try {
+        const data = await s3.listObjectsV2(params).promise();
+        const imageFiles = data.Contents.filter(obj => /\.(jpg|jpeg|png)$/i.test(obj.Key));
+        console.log(`adfgsdfgdsfgr "${bucket}" in "${artist}":`);
+        console.log(`Images found for "${artist}" in "${bucket}":`, imageFiles.map(f => f.Key));
+        return imageFiles.length > 0;
     } catch (error) {
-        console.error('Error checking/creating buckets:', error);
+        console.error(`Error listing objects in "${bucket}/${artist}":`, error);
+        return false; // Assume no image if listing fails
     }
 }
 
-ensureBucketsExist();
+// Upload route
+let audioBucket, imageBucket;
+app.post('/upload', (req, res) => {
+    upload(req, res, async (err) => {
+        if (err) {
+            return res.status(400).json({ error: err });
+        }
 
+        // Check for required fields
+        const artistName = req.body.artist;
+        if (!artistName) {
+            return res.status(400).json({ error: 'Artist name is required' });
+        }
+        if (!req.files || (!req.files.audio && !req.files.image)) {
+            return res.status(400).json({ error: 'At least one file (audio or image) is required' });
+        }
+
+        const sanitizedArtist = sanitizeArtistName(artistName);
+        const response = { artist: sanitizedArtist };
+
+        try {
+            // Check for existing image
+            const imageExists = req.files.image ? await checkExistingImage(imageBucket, sanitizedArtist) : false;
+            console.log(`Image exists for "${sanitizedArtist}": ${imageExists}`);
+
+            // Upload audio if present
+            if (req.files.audio) {
+                const audioFile = req.files.audio[0];
+                const audioKey = `${sanitizedArtist}/${Date.now()}_${sanitizeString(audioFile.originalname)}`;
+                const audioParams = {
+                    Bucket: audioBucket,
+                    Key: audioKey,
+                    Body: audioFile.buffer,
+                    ACL: 'public-read',
+                    ContentType: audioFile.mimetype
+                };
+                const audioData = await s3.upload(audioParams).promise();
+                response.audioUrl = getCDNUrl(audioBucket, audioKey);
+            }
+
+            // Upload image if present and no image exists yet
+            if (req.files.image) {
+                if (imageExists) {
+                    response.imageNote = 'Image upload skipped: only one image allowed per artist';
+                } else {
+                    const imageFile = req.files.image[0];
+                    const imageKey = `${sanitizedArtist}/${Date.now()}_${sanitizeString(imageFile.originalname)}`;
+                    const imageParams = {
+                        Bucket: imageBucket,
+                        Key: imageKey,
+                        Body: imageFile.buffer,
+                        ACL: 'public-read',
+                        ContentType: imageFile.mimetype
+                    };
+                    const imageData = await s3.upload(imageParams).promise();
+                    response.imageUrl = getCDNUrl(imageBucket, imageKey);
+                }
+            }
+
+            res.json({
+                message: 'Files processed successfully',
+                ...response
+            });
+        } catch (error) {
+            console.error('Upload error:', error);
+            res.status(500).json({ error: error });
+        }
+    });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// Start server and ensure buckets exist
+async function startServer() {
+    try {
+        const buckets = await ensureBucketsExist();
+        audioBucket = buckets[0]; // e.g., 'gurvinder-audios'
+        imageBucket = buckets[1]; // e.g., 'gurvinder-images'
+        app.listen(port, () => {
+            console.log(`Server running on port ${port}`);
+        });
+    } catch (error) {
+        console.error('Failed to start server due to bucket setup error:', error);
+        process.exit(1);
+    }
+}
+
+function getCDNUrl(bucket, key) {
+    return `https://${bucket}.sfo3.cdn.digitaloceanspaces.com/${key}`;
+}
+
+startServer();
 
 // Initialize the Supabase client
 const supabaseUrl = 'https://jjejmgefvqeyhyhxgvas.supabase.co'; // Replace with your Supabase URL
@@ -210,111 +354,6 @@ app.post('/add-song', async (req, res) => {
     }
 });
 
-// Utility to remove spaces and special characters
-function sanitizeFileName(fileName) {
-    return fileName.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
-}
-
-// Upload audio file to MinIO
-//const upload = multer({ dest: 'uploads/' });
-//app.post('/upload', upload.fields([{ name: 'audio_file', maxCount: 1 }, { name: 'image_file', maxCount: 1 }]), async (req, res) => {
-  //  try {
-    //    const { title, artist } = req.body;
-      //  const audioFile = req.files['audio_file'] ? req.files['audio_file'][0] : null;
-        //const imageFile = req.files['image_file'] ? req.files['image_file'][0] : null;
-
-        //if (!title || !artist || !audioFile) {
-          //  return res.status(400).json({ error: 'Title, artist, and audio file are required!' });
-        //}
-
-        //const sanitizedTitle = sanitizeFileName(title);
-        //const sanitizedArtist = sanitizeFileName(artist);
-        //const sanitizedAudioName = sanitizeFileName(audioFile.originalname);
-        //const audioFileName = `audio/${sanitizedArtist}/${sanitizedTitle}-${Date.now()}-${sanitizedAudioName}`;
-
-        //let imageUrl = null;
-
-        // Upload audio file to MinIO
-        //await minioClient.fPutObject(BUCKET_NAME_AUDIO, audioFileName, audioFile.path, { 'Content-Type': 'audio/mpeg' });
-
-        //if (imageFile) {
-          //  const sanitizedImageName = sanitizeFileName(imageFile.originalname);
-            //const imageFileName = `images/${sanitizedArtist}/${sanitizedTitle}-${Date.now()}-${sanitizedImageName}`;
-            //await minioClient.fPutObject(BUCKET_NAME_IMAGES, imageFileName, imageFile.path);
-            //imageUrl = `http://${process.env.MINIO_ENDPOINT || '134.199.223.51'}:9000/${BUCKET_NAME_IMAGES}/${imageFileName}`;
-        //}
-
-        //const audioUrl = `http://${process.env.MINIO_ENDPOINT || '134.199.223.51'}:9000/${BUCKET_NAME_AUDIO}/${audioFileName}`;
-
-        //res.json({
-          //  message: 'Song uploaded successfully to MinIO!',
-            //audio_url: audioUrl,
-            //image_url: imageUrl
-        //});
-    //} catch (error) {
-      //  console.error('Error uploading files to MinIO:', error);
-        //res.status(500).json({ error: 'File upload failed on MinIO!' });
-  //  }
-//});
-
-
-const upload = multer({ dest: 'uploads/' });
-
-app.post('/upload', upload.fields([
-    { name: 'audio_file', maxCount: 1 },
-    { name: 'image_file', maxCount: 1 }
-]), async (req, res) => {
-    try {
-        const { title, artist } = req.body;
-        const audioFile = req.files['audio_file']?.[0];
-        const imageFile = req.files['image_file']?.[0];
-
-        if (!title || !artist || !audioFile) {
-            return res.status(400).json({ error: 'Title, artist, and audio file are required!' });
-        }
-
-        const sanitizeFileName = (name) =>
-            name.replace(/[^a-z0-9_\-\.]/gi, '_').toLowerCase();
-
-        const sanitizedTitle = sanitizeFileName(title);
-        const sanitizedArtist = sanitizeFileName(artist);
-        const audioFileName = `audio/${sanitizedArtist}/${sanitizedTitle}-${Date.now()}-${sanitizeFileName(audioFile.originalname)}`;
-        const imageFileName = imageFile
-            ? `images/${sanitizedArtist}/${sanitizedTitle}-${Date.now()}-${sanitizeFileName(imageFile.originalname)}`
-            : null;
-
-        // Upload audio
-        const audioUpload = await s3.upload({
-            Bucket: BUCKET_NAME_AUDIO,
-            Key: audioFileName,
-            Body: fs.createReadStream(audioFile.path),
-            ACL: 'public-read',
-            ContentType: 'audio/mpeg'
-        }).promise();
-
-        let imageUrl = null;
-
-        // Upload image
-        if (imageFile) {
-            const imageUpload = await s3.upload({
-                Bucket: BUCKET_NAME_IMAGES,
-                Key: imageFileName,
-                Body: fs.createReadStream(imageFile.path),
-                ACL: 'public-read'
-            }).promise();
-            imageUrl = imageUpload.Location;
-        }
-
-        res.json({
-            message: 'Song uploaded successfully to DigitalOcean Spaces!',
-            audio_url: audioUpload.Location,
-            image_url: imageUrl
-        });
-    } catch (error) {
-        console.error('Error uploading to DigitalOcean Spaces:', error);
-        res.status(500).json({ error: error, details: error.message });
-    }
-});
 
 // Assuming you are using Express.js for your server
 // API Endpoint to Get Artist Image URL
@@ -376,7 +415,3 @@ app.get('/app-version', async (req, res) => {
     }
 });
 
-// Start the server
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
-});
