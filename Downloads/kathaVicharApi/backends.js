@@ -35,7 +35,8 @@ const s3 = new AWS.S3({
     endpoint: spacesEndpoint,
     accessKeyId: process.env.SPACES_KEY || 'DO00L4Y7KEUJUHXQH6JD',
     secretAccessKey: process.env.SPACES_SECRET || 'ZSaOKzElZ5y7tEtaW64/U+jE3AaWAts2ZTy4n/w8faw',
-    s3ForcePathStyle: true // Force path-style URLs
+    s3ForcePathStyle: true, // Force path-style URLs
+    region: 'sfo3', // Explicitly set the region
 });
 const BUCKET_NAME_AUDIO = 'audios';
 const BUCKET_NAME_IMAGES= 'images';
