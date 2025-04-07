@@ -30,13 +30,13 @@ const minioClient = new Minio.Client({
 });
 
 // Configure DigitalOcean Spaces client
-const spacesEndpoint = new AWS.Endpoint('kathavichar.sfo3.digitaloceanspaces.com'); // Change region if needed
+const spacesEndpoint = new AWS.Endpoint('sfo3.digitaloceanspaces.com'); // Use the base endpoint
 const s3 = new AWS.S3({
     endpoint: spacesEndpoint,
     accessKeyId: process.env.SPACES_KEY || 'DO00L4Y7KEUJUHXQH6JD',
-    secretAccessKey: process.env.SPACES_SECRET || 'your-secret-key'
+    secretAccessKey: process.env.SPACES_SECRET || 'your-secret-key',
+    s3ForcePathStyle: true // Force path-style URLs
 });
-
 const BUCKET_NAME_AUDIO = 'audios';
 const BUCKET_NAME_IMAGES= 'images';
 
