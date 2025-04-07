@@ -30,7 +30,7 @@ const minioClient = new Minio.Client({
 });
 
 // Configure DigitalOcean Spaces client
-const spacesEndpoint = new AWS.Endpoint('https://kathavichar.sfo3.digitaloceanspaces.com'); // Change region if needed
+const spacesEndpoint = new AWS.Endpoint('kathavichar.sfo3.digitaloceanspaces.com'); // Change region if needed
 const s3 = new AWS.S3({
     endpoint: spacesEndpoint,
     accessKeyId: process.env.SPACES_KEY || 'DO00L4Y7KEUJUHXQH6JD',
