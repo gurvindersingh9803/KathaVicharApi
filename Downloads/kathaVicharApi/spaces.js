@@ -7,7 +7,7 @@ const app = express();
 const port = 3001;
 
 // Configure Digital Ocean Spaces
-const spacesEndpoint = new AWS.Endpoint('sfo3.digitaloceanspaces.com');
+const spacesEndpoint = new AWS.Endpoint('sfo3.cdn.digitaloceanspaces.com');
 const s3 = new AWS.S3({
     endpoint: spacesEndpoint,
     accessKeyId: 'DO00WWF46UPWBTUPC8RW',
