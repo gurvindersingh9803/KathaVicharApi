@@ -64,6 +64,14 @@ async function ensureBucketsExist() {
     return buckets;
 }
 
+function sanitizeArtistName(name) {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')   // replace non-alphanumeric with hyphen
+        .replace(/-+/g, '-')          // collapse multiple hyphens
+        .replace(/^-|-$/g, '');       // trim leading/trailing hyphens
+}
+
 // Configure multer for audio and image uploads
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -125,7 +133,7 @@ app.post('/upload', (req, res) => {
             return res.status(400).json({ error: 'At least one file (audio or image) is required' });
         }
 
-        const sanitizedArtist = artistName;
+        const sanitizedArtist = sanitizeArtistName(artistName);
         const response = { artist: sanitizedArtist };
 
         try {
