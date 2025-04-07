@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <form action="http://localhost:3000/upload" method="POST" enctype="multipart/form-data">
+        <label for="artist">Artist Name:</label><br>
+        <input type="text" id="artist" name="artist" placeholder="Enter artist name" required><br>
+        <label for="audio">Audio File:</label><br>
+        <input type="file" id="audio" name="audio" accept=".mp3,.wav,.ogg"><br>
+        <label for="image">Image File:</label><br>
+        <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png"><br>
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>
