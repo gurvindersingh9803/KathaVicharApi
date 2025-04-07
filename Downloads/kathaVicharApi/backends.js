@@ -311,7 +311,7 @@ app.post('/upload', upload.fields([
         });
     } catch (error) {
         console.error('Error uploading to DigitalOcean Spaces:', error);
-        res.status(500).json({ error: 'Upload failed!', details: error.message });
+        res.status(500).json({ error: error, details: error.message });
     }
 });
 
