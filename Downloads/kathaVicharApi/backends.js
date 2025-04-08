@@ -385,33 +385,42 @@ app.get('/artist-image/:artistName', async (req, res) => {
 });
 
 
-// API Endpoint to get version and force update info
 app.get('/app-version', async (req, res) => {
     try {
-        // Fetch the latest settings from Supabase
+        // Fetch the latest settings from Supabase with explicit selection of required fields
         const { data, error } = await supabase
-            .from('settings') // Assuming your table is named 'settings'
-            .select('*')
-            .maybeSingle();
+            .from('settings')
+            .select('version, force_upgrade') // Explicitly select only needed fields
+            .single(); // Fetch only one record
 
+        // Check if there was an error with the query
         if (error) {
-            return res.status(500).json({ error: error });
+            console.error('Supabase Error:', error); // Log full error details
+            return res.status(500).json({ error: 'Error fetching version information from Supabase' });
         }
 
-        if (!data) {
-            return res.status(404).json({ error: 'Version info not found' });
+        // Log the fetched data for debugging
+        console.log('Fetched Data:', data);
+
+        // Check if the required fields exist in the data
+        if (!data || !data.version || !data.force_upgrade) {
+            console.error('Missing version or force_upgrade data:', data);
+            return res.status(404).json({ error: 'Version info not found or invalid in the database' });
         }
 
+        // Extract version and force_upgrade from the data
         const { version, force_upgrade } = data;
 
-        // Send version and force upgrade information
+        // Send version and force upgrade information in the response
         res.status(200).json({
-            version: version, // Current version from Supabase
-            force_upgrade: force_upgrade // Boolean indicating if a force upgrade is needed
+            version: version,
+            force_upgrade: force_upgrade,
         });
     } catch (error) {
-        console.error('Error fetching version and force upgrade info:', error);
-        res.status(500).json({ error: error });
+        // Log any other unexpected errors
+        console.error('Unexpected Error:', error);
+        res.status(500).json({ error: error.message || error });
     }
 });
+
 
