@@ -387,37 +387,31 @@ app.get('/artist-image/:artistName', async (req, res) => {
 
 app.get('/app-version', async (req, res) => {
     try {
-        // Fetch the latest settings from Supabase with explicit selection of required fields
         const { data, error } = await supabase
             .from('settings')
-            .select('version, force_upgrade') // Explicitly select only needed fields
-            .single(); // Fetch only one record
+            .select('version, force_upgrade')
+            .maybeSingle(); // Allow for no rows to be returned
 
-        // Check if there was an error with the query
+        console.log('Supabase Response:', { data, error });
+
+        // Check if an error occurred
         if (error) {
             console.error('Supabase Error:', error); // Log full error details
             return res.status(500).json({ error: 'Error fetching version information from Supabase' });
         }
 
-        // Log the fetched data for debugging
-        console.log('Fetched Data:', data);
-
-        // Check if the required fields exist in the data
+        // If no data or missing fields, return an error
         if (!data || !data.version || !data.force_upgrade) {
-            console.error('Missing version or force_upgrade data:', data);
+            console.error('Missing required fields in data:', data);
             return res.status(404).json({ error: 'Version info not found or invalid in the database' });
         }
 
-        // Extract version and force_upgrade from the data
-        const { version, force_upgrade } = data;
-
-        // Send version and force upgrade information in the response
+        // Return the version and force_upgrade data
         res.status(200).json({
-            version: version,
-            force_upgrade: force_upgrade,
+            version: data.version,
+            force_upgrade: data.force_upgrade,
         });
     } catch (error) {
-        // Log any other unexpected errors
         console.error('Unexpected Error:', error);
         res.status(500).json({ error: error.message || error });
     }
