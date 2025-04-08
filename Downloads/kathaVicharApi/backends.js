@@ -384,8 +384,48 @@ app.get('/artist-image/:artistName', async (req, res) => {
     }
 });
 
+app.post("/app-version", async (req, res) => {
+  const { currentVersion } = req.body;
 
-app.get('/app-version', async (req, res) => {
+  if (!currentVersion) {
+    return res.status(400).json({ error: "Missing 'currentVersion' in request body" });
+  }
+
+  try {
+    // Fetch all versions from the app_versions table
+    const { data: versions, error } = await supabase
+      .from("version_setting")
+      .select("*");
+
+    if (error) throw error;
+
+    if (!versions || versions.length === 0) {
+      return res.status(404).json({ error: "No version data found in the database." });
+    }
+
+    // Sort versions descending using semver
+    const sortedVersions = versions.sort((a, b) => semver.rcompare(a.version, b.version));
+    const latest = sortedVersions[0];
+
+    const needsUpgrade = semver.lt(currentVersion, latest.version);
+
+    const forceEntry = versions.find(v => v.version === currentVersion && v.force_upgrade === true);
+    const forceUpgrade = !!forceEntry;
+
+    return res.status(200).json({
+      latestVersion: latest.version,
+      needsUpgrade,
+      forceUpgrade,
+      releaseNotes: latest.release_notes || "",
+    });
+
+  } catch (err) {
+    console.error("Version check failed:", err);
+    return res.status(500).json({ error: "Version check failed", details: err.message });
+  }
+});
+
+app.get('/app-version_not_using', async (req, res) => {
     try {
         // Hardcode the UUID
         const uuid = '654880e6-7d85-4d18-9c1e-73f80a7dfd10';
