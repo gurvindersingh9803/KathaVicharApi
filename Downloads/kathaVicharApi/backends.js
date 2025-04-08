@@ -411,7 +411,7 @@ app.get('/app-version', async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching version and force upgrade info:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: error });
     }
 });
 
