@@ -384,7 +384,7 @@ app.get('/artist-image/:artistName', async (req, res) => {
     }
 });
 
-router.get('/app-version', async (req, res) => {
+app.get('/app-version', async (req, res) => {
   const currentVersion = req.query.currentVersion;
 
   if (!currentVersion) {
