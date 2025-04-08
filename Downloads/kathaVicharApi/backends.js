@@ -393,7 +393,10 @@ app.get('/app-version', async (req, res) => {
         // Fetch the settings row using the hardcoded UUID
         const { data, error } = await supabase
             .from('version_setting')
-            .select('*')
+            .select("*")
+            .order("version", { ascending: false })
+            .limit(1)
+            .single();
 
         console.log('Supabase Response:', { data, error });
 
