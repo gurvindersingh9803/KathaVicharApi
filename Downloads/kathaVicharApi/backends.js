@@ -395,7 +395,7 @@ app.get('/app-version', async (req, res) => {
             .single(); // Fetch a single record
 
         if (error) {
-            return res.status(500).json({ error: 'Error fetching version information from Supabase' });
+            return res.status(500).json({ error: error });
         }
 
         if (!data) {
