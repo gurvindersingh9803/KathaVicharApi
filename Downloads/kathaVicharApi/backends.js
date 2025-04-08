@@ -392,7 +392,7 @@ app.get('/app-version', async (req, res) => {
         const { data, error } = await supabase
             .from('settings') // Assuming your table is named 'settings'
             .select('*')
-            .single(); // Fetch a single record
+            .maybeSingle();
 
         if (error) {
             return res.status(500).json({ error: error });
