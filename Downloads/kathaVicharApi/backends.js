@@ -384,8 +384,8 @@ app.get('/artist-image/:artistName', async (req, res) => {
     }
 });
 
-app.post("/app-version", async (req, res) => {
-  const { currentVersion } = req.body;
+router.get('/app-version', async (req, res) => {
+  const currentVersion = req.query.currentVersion;
 
   if (!currentVersion) {
     return res.status(400).json({ error: "Missing 'currentVersion' in request body" });
