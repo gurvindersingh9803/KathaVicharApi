@@ -387,20 +387,23 @@ app.get('/artist-image/:artistName', async (req, res) => {
 
 app.get('/app-version', async (req, res) => {
     try {
+        // Hardcode the UUID
+        const uuid = '654880e6-7d85-4d18-9c1e-73f80a7dfd10';
+
+        // Fetch the settings row using the hardcoded UUID
         const { data, error } = await supabase
             .from('settings')
             .select('version, force_upgrade')
-            .maybeSingle(); // Allow for no rows to be returned
+            .eq('uuid', uuid) // Use the hardcoded UUID to filter the row
+            .single(); // Expect a single row to be returned
 
         console.log('Supabase Response:', { data, error });
 
-        // Check if an error occurred
         if (error) {
-            console.error('Supabase Error:', error); // Log full error details
+            console.error('Supabase Error:', error);
             return res.status(500).json({ error: 'Error fetching version information from Supabase' });
         }
 
-        // If no data or missing fields, return an error
         if (!data || !data.version || !data.force_upgrade) {
             console.error('Missing required fields in data:', data);
             return res.status(404).json({ error: 'Version info not found or invalid in the database' });
