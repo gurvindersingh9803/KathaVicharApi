@@ -392,10 +392,8 @@ app.get('/app-version', async (req, res) => {
 
         // Fetch the settings row using the hardcoded UUID
         const { data, error } = await supabase
-            .from('settings')
-            .select('version, force_upgrade')
-            .eq('uuid', uuid) // Use the hardcoded UUID to filter the row
-            .single(); // Expect a single row to be returned
+            .from('version_setting')
+            .select('*')
 
         console.log('Supabase Response:', { data, error });
 
@@ -404,15 +402,14 @@ app.get('/app-version', async (req, res) => {
             return res.status(500).json({ error: 'Error fetching version information from Supabase' });
         }
 
-        if (!data || !data.version || !data.force_upgrade) {
+        if (!data) {
             console.error('Missing required fields in data:', data);
             return res.status(404).json({ error: 'Version info not found or invalid in the database' });
         }
 
         // Return the version and force_upgrade data
         res.status(200).json({
-            version: data.version,
-            force_upgrade: data.force_upgrade,
+            data: data,
         });
     } catch (error) {
         console.error('Unexpected Error:', error);
