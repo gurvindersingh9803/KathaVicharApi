@@ -391,7 +391,7 @@ app.get('/app-version', async (req, res) => {
         // Fetch the latest settings from Supabase
         const { data, error } = await supabase
             .from('settings') // Assuming your table is named 'settings'
-            .select('version, force_upgrade')
+            .select('*')
             .single(); // Fetch a single record
 
         if (error) {
