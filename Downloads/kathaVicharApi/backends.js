@@ -100,6 +100,7 @@ const upload = multer({
         const mimetypes = [
             'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg',
             'image/jpeg', 'image/png', 'audio/m4a',
+            'audio/mp4', 'audio/x-m4a', 'audio/aac'
         ];
         const mimetype = mimetypes.includes(file.mimetype);
 
